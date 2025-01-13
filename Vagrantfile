@@ -6,7 +6,7 @@ Vagrant.configure("2") do |config|
     soufe1.vbguest.auto_update = false
     soufe1.vm.provision "ansible" do |ansible|
       ansible.playbook = "playbook.yml"
-      ansible.tags="soufe1"
+      ansible.tags = "soufe1"
     end
   end
 
