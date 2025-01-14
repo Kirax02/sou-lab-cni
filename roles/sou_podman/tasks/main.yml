@@ -7,27 +7,74 @@
     - soufe1
     - soufe2
 
-- name: create a directory for soufe1
+- name: Create a directories for soufe1
   file:
-    path: "/etc/haproxy"
+    path: "{{ item }}"
     state: directory
+  loop:
+    - "/etc/haproxy"
+    - "/etc/ssl/crt"
+    - "/etc/ssl/private"
+    - "/etc/ssl/csr"
   tags:
     - soufe1
 
-- name: generate configuration file
-  ansible.builtin.template:
+- name: Install Python cryptography
+  package:
+    name: python3-cryptography
+    state: present
+  tags:
+    - soufe1
+
+- name: Generate configuration file for haproxy container
+  template:
     src: haproxy.cfg.j2
     dest: /etc/haproxy/haproxy.cfg
   tags:
     - soufe1
 
-- name: pull image for haproxy
+- name: Generate a private key for haproxy
+  openssl_privatekey:
+    path: /etc/ssl/private/haproxy.pem
+    cipher: auto
+    size: 2048
+  tags:
+    - soufe1
+
+- name: Generate a CSR for haproxy
+  openssl_csr:
+    path: /etc/ssl/csr/haproxy.csr
+    privatekey_path: /etc/ssl/private/haproxy.pem
+    common_name: "haproxy.local"
+    country_name: "IT"
+    organization_name: "lupacchiotti"
+    state_or_province_name: "Lazio"
+  tags:
+    - soufe1
+      
+- name: Generate a Self Signed OpenSSL certificate for haproxy
+  openssl_certificate:
+    path: /etc/ssl/crt/haproxy.crt
+    privatekey_path: /etc/ssl/private/haproxy.pem
+    csr_path: /etc/ssl/csr/haproxy.csr
+    provider: selfsigned
+  tags:
+    - soufe1
+
+- name: Create concatenated certificate
+  shell: cat /etc/ssl/private/haproxy.pem /etc/ssl/crt/haproxy.crt > /etc/ssl/crt/haproxy.pem
+  args:
+    executable: /bin/bash
+  tags:
+    - soufe1
+
+- name: Pull image for haproxy
   podman_image:
     name: docker.io/library/haproxy
   tags:
     - soufe1
 
-- name: create haproxy container
+- name: Create haproxy container
   containers.podman.podman_container:
     name: haproxy
     image: haproxy
@@ -38,10 +85,11 @@
       - "443:443"
     volumes:
       - "/etc/haproxy:/usr/local/etc/haproxy:Z"
+      - "/etc/ssl/crt:/usr/local/etc/haproxy/certs:Z"
   tags:
     - soufe1
 
-- name: create a directory for soube2
+- name: Create a directories for soube2
   file:
     path: "{{ item }}"
     state: directory
@@ -53,20 +101,20 @@
   tags:
     - soufe2
 
-- name: generate configuration file for prometheus
+- name: Generate configuration file for prometheus
   template:
     src: prometheus.yml.j2
     dest: /etc/prometheus/prometheus.yml
   tags:
     - soufe2
 
-- name: pull prometheus image
+- name: Pull prometheus image
   podman_image:
     name: docker.io/prom/prometheus
   tags:
     - soufe2
 
-- name: create prometheus container
+- name: Create prometheus container
   containers.podman.podman_container:
     name: prometheus
     image: prom/prometheus
@@ -79,20 +127,20 @@
   tags:
     - soufe2
 
-- name: generate configuration file for grafana
+- name: Generate configuration file for grafana
   template:
     src: grafana.ini.j2
     dest: /etc/grafana/grafana.ini
   tags:
     - soufe2
 
-- name: pull grafana image
+- name: Pull grafana image
   podman_image:
     name: docker.io/grafana/grafana
   tags:
     - soufe2
 
-- name: create grafana container
+- name: Create grafana container
   containers.podman.podman_container:
     name: grafana
     image: grafana/grafana
