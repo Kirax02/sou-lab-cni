@@ -123,7 +123,7 @@
       - "9090:9090"
     volumes: 
       - "/etc/prometheus:/etc/prometheus:Z"
-      - "/var/lib/prometheus"
+      - "/var/lib/prometheus:/var/data/prometheus:Z"
   tags:
     - soufe2
 
@@ -149,6 +149,6 @@
       - "3000:3000"
     volumes:
       - "/etc/grafana:/etc/grafana:Z"
-      - "/var/lib/grafana"
+      - "/var/lib/grafana:/var/data/grafana:Z"
   tags:
     - soufe2
